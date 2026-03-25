@@ -21,16 +21,29 @@ public class ProcessingService
         this.wkit = wkit;
     }
 
-    public void ProcessTriangle(string meshPath)
+    public void Process(string meshPath, ulong sectorHash, ulong shapeHash, string outPath)
     {
-        var (mesh, cr2wfile) = ReadMesh(meshPath);
-        var colMesh = ReadBV4TrianglePhysXMesh();
+        using var meshFileStream = new FileStream(meshPath, FileMode.Open, FileAccess.Read);
+        var cr2wfile = wkit.Red4ParserService.ReadRed4File(meshFileStream);
+        if (cr2wfile?.RootChunk is not CMesh { RenderResourceBlob.Chunk: rendRenderMeshBlob } mesh)
+            throw new InvalidDataException();
 
-        // 1. Convert BV4 to GLB
+        var colMesh = wkit.GeometryCacheService.GetEntry(sectorHash, shapeHash);
+        
         var tempGlbPath = Path.GetTempFileName() + ".glb";
         try
         {
-            BV4ToGltfConverter.Convert(colMesh, tempGlbPath);
+            switch (colMesh)
+            {
+                case BV4TriangleMesh bv4Mesh:
+                    BV4ToGltfConverter.Convert(bv4Mesh, tempGlbPath);
+                    break;
+                case ConvexMesh convexMesh:
+                    ConvexToGltfConverter.Convert(convexMesh, tempGlbPath);
+                    break;
+                default:
+                    throw new NotSupportedException();
+            }
 
             var gltfImportArgs = new GltfImportArgs
             {
@@ -47,102 +60,19 @@ public class ProcessingService
                 writer.WriteFile(cr2wfile);
             }
             
-            var outPath = meshPath.Replace(".mesh", "_new.mesh");
-            outPath = Path.Combine("E:\\SCC", outPath);
             Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
 
             File.WriteAllBytes(outPath, meshStream.ToArray());
             
             using var redFs = new FileStream(outPath, FileMode.Open, FileAccess.ReadWrite);
-
-            var success = wkit.ModTools.ImportMesh(new FileInfo(tempGlbPath), redFs, gltfImportArgs);
-            if (!success)
-            {
+            
+            if (!wkit.ModTools.ImportMesh(new FileInfo(tempGlbPath), redFs, gltfImportArgs))
                 Console.WriteLine("Failed to import mesh via WolvenKit.");
-                return;
-            }
         }
         finally
         {
             if (File.Exists(tempGlbPath))
                 File.Delete(tempGlbPath);
         }
-    }
-
-    public void Process(string meshPath)
-    {
-        var (mesh, cr2wfile) = ReadMesh(meshPath);
-        var colMesh = ReadConvexMesh();
-
-        // 1. Convert Convex to GLB
-        var tempGlbPath = Path.GetTempFileName() + ".glb";
-        try
-        {
-            ConvexToGltfConverter.Convert(colMesh, tempGlbPath);
-
-            var gltfImportArgs = new GltfImportArgs
-            {
-                ImportFormat = GltfImportAsFormat.Mesh,
-                Keep = false,
-                ImportMaterials = false,
-                ImportGarmentSupport = false,
-                ShowVerboseLogOutput = true
-            };
-
-            using var meshStream = new MemoryStream();
-            using (var writer = new CR2WWriter(meshStream))
-            {
-                writer.WriteFile(cr2wfile);
-            }
-            
-            var outPath = meshPath.Replace(".mesh", "_new.mesh");
-            outPath = Path.Combine("E:\\SCC", outPath);
-            Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
-
-            File.WriteAllBytes(outPath, meshStream.ToArray());
-            
-            using var redFs = new FileStream(outPath, FileMode.Open, FileAccess.ReadWrite);
-
-            var success = wkit.ModTools.ImportMesh(new FileInfo(tempGlbPath), redFs, gltfImportArgs);
-            if (!success)
-            {
-                Console.WriteLine("Failed to import mesh via WolvenKit.");
-                return;
-            }
-        }
-        finally
-        {
-            if (File.Exists(tempGlbPath))
-                File.Delete(tempGlbPath);
-        }
-    }
-
-    private (CMesh mesh, CR2WFile file) ReadMesh(string meshPath)
-    {
-        var cr2wfile = wkit.ArchiveManager.GetCR2WFile(meshPath);
-        if (cr2wfile?.RootChunk is CMesh { RenderResourceBlob.Chunk: rendRenderMeshBlob } mesh)
-            return (mesh, cr2wfile);
-        Console.WriteLine("File is not a mesh.");
-        throw new InvalidDataException();
-    }
-
-    private BV4TriangleMesh ReadBV4TrianglePhysXMesh()
-    {
-        ulong sectorHash = 12717457377011094652;
-        ulong shapeHash = 1000903821159525457;
-        
-        var collisionShape = wkit.GeometryCacheService.GetEntry(sectorHash, shapeHash);
-        var colMesh = collisionShape as BV4TriangleMesh;
-        return colMesh!;
-    }
-
-    private ConvexMesh ReadConvexMesh()
-    {
-        ulong sectorHash = 1506287456064029993;
-        ulong shapeHash = 15728430803346557784;
-        
-        var collisionShape = wkit.GeometryCacheService.GetEntry(sectorHash, shapeHash);
-        var colMesh = collisionShape as ConvexMesh;
-        return colMesh!;
     }
 }

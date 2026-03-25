@@ -64,14 +64,15 @@ namespace StaticCollisionConverter
 
                         Console.WriteLine($"Hello, {commandArray[1]}!");
                         break;
-                    case "run-main":
-                        if (commandArray.Length < 2)
+                    case "convert-single-collision":
+                        if (commandArray.Length != 5)
                         {
-                            Console.WriteLine("This command requires 1 parameter!");
+                            Console.WriteLine("This command requires 4 parameters!");
+                            Console.WriteLine("Usage: convert-single-collision <path to donor> <sectorHash> <shapeHash> <outputPath>");
                             return;
                         }
 
-                        new ProcessingService(WolvenKitWrapper.Instance).Process(commandArray[1]);
+                        new ProcessingService(WolvenKitWrapper.Instance).Process(commandArray[1], ulong.Parse(commandArray[2]), ulong.Parse(commandArray[3]), commandArray[4]);
                         break;
                     case "help":
                         Console.WriteLine("Available commands:");
