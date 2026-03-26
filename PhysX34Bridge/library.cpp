@@ -69,7 +69,14 @@ extern "C"
         desc.triangles.stride = 3 * sizeof(physx::PxU32);
         desc.triangles.data = indices;
         gCooking->cookTriangleMesh(desc, buf);
-        return PxBCookedMeshResult(buf.getData(), buf.getSize());
+
+        PxBCookedMeshResult result{};
+        result.size = buf.getSize();
+        result.data = new uint8_t[result.size];
+
+        memcpy(result.data, buf.getData(), result.size);
+
+        return result;
     }
 
     PxBCookedMeshResult PxBCookConvexMesh(
@@ -85,7 +92,14 @@ extern "C"
         desc.flags = physx::PxConvexFlag::eCOMPUTE_CONVEX;
         desc.vertexLimit = 256; // it's what the blender addon uses too, not sure if it's the right count for this context
         gCooking->cookConvexMesh(desc, buf);
-        return PxBCookedMeshResult(buf.getData(), buf.getSize());
+
+        PxBCookedMeshResult result{};
+        result.size = buf.getSize();
+        result.data = new uint8_t[result.size];
+
+        memcpy(result.data, buf.getData(), result.size);
+
+        return result;
     }
 }
 
