@@ -67,7 +67,7 @@ extern "C"
         desc.points.data = vertices;
         desc.triangles.count = indexCount / 3;
         desc.triangles.stride = 3 * sizeof(physx::PxU32);
-        desc.triangles.data = vertices;
+        desc.triangles.data = indices;
         gCooking->cookTriangleMesh(desc, buf);
         return PxBCookedMeshResult(buf.getData(), buf.getSize());
     }
