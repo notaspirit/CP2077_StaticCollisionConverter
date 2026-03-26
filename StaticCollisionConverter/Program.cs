@@ -1,5 +1,9 @@
 ﻿using System.CommandLine.Parsing;
+using StaticCollisionConverter.Converters;
 using StaticCollisionConverter.Services;
+using WolvenKit.Common.PhysX;
+using WolvenKit.RED4.Archive.CR2W;
+using WolvenKit.RED4.Archive.IO;
 
 namespace StaticCollisionConverter
 {
@@ -64,7 +68,7 @@ namespace StaticCollisionConverter
 
                         Console.WriteLine($"Hello, {commandArray[1]}!");
                         break;
-                    case "convert-single-collision":
+                    case "convert-single-collision-to-cmesh":
                         if (commandArray.Length != 5)
                         {
                             Console.WriteLine("This command requires 4 parameters!");
@@ -72,7 +76,59 @@ namespace StaticCollisionConverter
                             return;
                         }
 
-                        new ProcessingService(WolvenKitWrapper.Instance).Process(commandArray[1], ulong.Parse(commandArray[2]), ulong.Parse(commandArray[3]), commandArray[4]);
+                        GenerateCMesh.Generate(commandArray[1], ulong.Parse(commandArray[2]), ulong.Parse(commandArray[3]), commandArray[4]);
+                        break;
+                    case "convert-single-collision-to-entity":
+                        if (commandArray.Length != 5)
+                        {
+                            Console.WriteLine("This command requires 4 parameters!");
+                            Console.WriteLine(
+                                "Usage: convert-single-collision <path to donor> <sectorHash> <shapeHash> <outputPath>");
+                        }
+                        
+                        Console.WriteLine("Initializing PxBridge...");
+                        
+                        PxBridge.PxBInit();
+                        
+                        Console.WriteLine("Generating CMesh...");
+                        
+                        GenerateCMesh.Generate(commandArray[1], ulong.Parse(commandArray[2]),
+                            ulong.Parse(commandArray[3]), commandArray[4].Replace(".ent", ".mesh"));
+                        
+                        Console.WriteLine("Loading BV4...");
+                        
+                        var bv4mesh =
+                            WolvenKitWrapper.Instance.GeometryCacheService.GetEntry(ulong.Parse(commandArray[2]),
+                                ulong.Parse(commandArray[3]));
+                        
+                        Console.WriteLine("Converting BV4 to DynCollMesh...");
+                        
+                        var cookedColl = BV4ToDynCollMesh.Convert(bv4mesh as BV4TriangleMesh);
+                        
+                        Console.WriteLine("Generating Entity...");
+                        
+                        var ent = GenerateEntity.Generate(commandArray[4], cookedColl, dynCollMeshType.TriangleMesh);
+                        
+                        Console.WriteLine("Writing Entity to CR2W...");
+                        
+                        var cr2wfile = new CR2WFile()
+                        {
+                            RootChunk = ent
+                        };
+
+                        using (var meshStream = new MemoryStream())
+                        {
+                            using (var writer = new CR2WWriter(meshStream))
+                            {
+                                writer.WriteFile(cr2wfile);
+                            }
+                
+                            Directory.CreateDirectory(Path.GetDirectoryName(commandArray[4])!);
+
+                            File.WriteAllBytes(commandArray[4], meshStream.ToArray());
+                        }
+                        
+                        Console.WriteLine("Done!");
                         break;
                     case "help":
                         Console.WriteLine("Available commands:");
