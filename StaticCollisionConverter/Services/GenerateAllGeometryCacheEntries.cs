@@ -46,7 +46,17 @@ public class GenerateAllGeometryCacheEntries
             */
             
             foreach (var shapeEntry in shapeEntries)
-                ProcessShape(sectorHash, shapeEntry.Key, shapeEntry.Value);
+            {
+                try
+                {
+                    ProcessShape(sectorHash, shapeEntry.Key, shapeEntry.Value);
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"Failed to process shape for {sectorHash}, {shapeEntry.Key} with exception: {ex}, adding to skip list");
+                    File.AppendAllText("E:\\scc_skip_shapes.txt", $"{sectorHash}_{shapeEntry.Key}: {ex}\n");
+                }
+            }
             
         }
 
@@ -54,7 +64,14 @@ public class GenerateAllGeometryCacheEntries
         {
             var filename = $"{sectorHash}_{shapeHash}";
             
-            // Console.WriteLine($"Processing shape for {sectorHash}, {shapeHash}, physics shape exists : {shape != null} with type  {shape?.GetType()}");
+            if (File.Exists(Path.Join(projectPath, relativeMeshDir, $"{filename}.mesh")) &&
+                File.Exists(Path.Join(projectPath, relativeEntDir, $"{filename}.ent")))
+            {
+                Console.WriteLine($"Skipping shape for {sectorHash}, {shapeHash} because it already exists");
+                return;
+            }
+            
+            Console.WriteLine($"Processing shape for {sectorHash}, {shapeHash} with type  {shape.GetType()}");
             
             GenerateCMesh.Generate(donorMesh, shape, Path.Join(projectPath, relativeMeshDir, $"{filename}.mesh"));
             
@@ -77,6 +94,7 @@ public class GenerateAllGeometryCacheEntries
             if (cookedColl.Length == 0)
             {
                 Console.WriteLine($"Failed to cook shape for {sectorHash}, {shapeHash} for entity");
+                File.AppendAllText("E:\\scc_failed_cook_shapes.txt", $"{sectorHash} {shapeHash}\n");
                 return;
             }
             

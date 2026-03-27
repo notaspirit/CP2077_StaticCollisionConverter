@@ -18,6 +18,14 @@ public static class ConvexToDynCollMesh
             iv += 3;
         }
         
+        // Console.WriteLine($"Convex mesh has {convex.HullData.HullVertices.Count} / {verts.Length} vertices");
+
+        if (convex.HullData.HullVertices.Count >= 256)
+        {
+            Console.WriteLine($"WARNING: Convex mesh has too many vertices! {convex.HullData.HullVertices.Count}");
+            return [];
+        }
+        
         var cookedGeo = PxBridge.PxBCookConvexMesh(verts, (uint)verts.Length);
         if (cookedGeo.size == 0)
             return [];

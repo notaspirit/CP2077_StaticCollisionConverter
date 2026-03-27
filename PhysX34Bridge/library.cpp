@@ -2,6 +2,7 @@
 #include "library.h"
 
 #include <fstream>
+#include <iostream>
 
 extern "C"
 {
@@ -22,7 +23,8 @@ extern "C"
         scale.speed = 9.81f;
 
         physx::PxCookingParams params(scale);
-        params.meshPreprocessParams = physx::PxMeshPreprocessingFlag::eWELD_VERTICES;
+        params.meshPreprocessParams |= physx::PxMeshPreprocessingFlag::eDISABLE_CLEAN_MESH;
+        params.meshPreprocessParams |= physx::PxMeshPreprocessingFlag::eDISABLE_ACTIVE_EDGES_PRECOMPUTE;
         params.meshWeldTolerance = 0.05f;
 
         gCooking = PxCreateCooking(PX_PHYSICS_VERSION, *gFoundation, params);
@@ -72,14 +74,21 @@ extern "C"
         desc.triangles.data = indices;
 
         PxBCookedMeshResult result{};
-
-        if (gCooking->cookTriangleMesh(desc, buf))
+        try
         {
-            result.size = buf.getSize();
-            result.data = new uint8_t[result.size];
+            if (gCooking->cookTriangleMesh(desc, buf))
+            {
+                result.size = buf.getSize();
+                result.data = new uint8_t[result.size];
 
-            memcpy(result.data, buf.getData(), result.size);
+                memcpy(result.data, buf.getData(), result.size);
+            }
         }
+        catch (std::exception& e)
+        {
+            std::cerr << "PxBCookedMesh::error: " << e.what() << std::endl;
+        }
+
 
         return result;
     }
@@ -99,7 +108,7 @@ extern "C"
 
         PxBCookedMeshResult result{};
 
-        if (!gCooking->cookConvexMesh(desc, buf))
+        if (gCooking->cookConvexMesh(desc, buf))
         {
             result.size = buf.getSize();
             result.data = new uint8_t[result.size];
