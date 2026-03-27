@@ -1,3 +1,4 @@
+using WolvenKit.Core.Extensions;
 using WolvenKit.RED4.Types;
 
 namespace StaticCollisionConverter.Services;
@@ -12,18 +13,47 @@ public enum dynCollMeshType
 
 public class GenerateEntity
 {
+    private static Random random = new Random();
     public static entEntityTemplate Generate(string CMeshPath, byte[] dynCollMesh, dynCollMeshType meshType)
     {
-        var entity = new entEntityTemplate();
-        entity.Components = new CArray<entIComponent>();
+        var entity = new entEntityTemplate()
+        {
+            Components = new CArray<entIComponent>(),
+            Entity = new gameObject()
+        };
+        
         entity.Components.Add(
             new entMeshComponent()
             {
-                Mesh = new CResourceAsyncReference<CMesh>(CMeshPath)
+                Mesh = new CResourceAsyncReference<CMesh>(CMeshPath),
+                Id = random.NextCRUID(),
+                Name = "Visual Mesh"
             }
             );
 
-        var collComp = new entSimpleColliderComponent();
+        var collComp = new entColliderComponent()
+        {
+            Id = random.NextCRUID(),
+            Name = "Collision Mesh",
+            Colliders = new CArray<CHandle<physicsICollider>>(),
+            FilterData = new physicsFilterData()
+            {
+                Preset = "World Static",
+                QueryFilter = new physicsQueryFilter()
+                {
+                    Mask1 = 0,
+                    Mask2 = 70107400
+                },
+                SimulationFilter = new physicsSimulationFilter()
+                {
+                    Mask1 = 114696,
+                    Mask2 = 23627
+                }
+            },
+            Volume = 1,
+            Mass = 1
+        };
+        
         collComp.Colliders = new CArray<CHandle<physicsICollider>>();
         switch (meshType)
         {

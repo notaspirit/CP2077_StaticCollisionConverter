@@ -79,12 +79,20 @@ namespace StaticCollisionConverter
                         GenerateCMesh.Generate(commandArray[1], ulong.Parse(commandArray[2]), ulong.Parse(commandArray[3]), commandArray[4]);
                         break;
                     case "convert-single-collision-to-entity":
-                        if (commandArray.Length != 5)
+                        if (commandArray.Length != 6)
                         {
-                            Console.WriteLine("This command requires 4 parameters!");
+                            Console.WriteLine("This command requires 5 parameters!");
                             Console.WriteLine(
-                                "Usage: convert-single-collision <path to donor> <sectorHash> <shapeHash> <outputPath>");
+                                "Usage: convert-single-collision <path to donor> <sectorHash> <shapeHash> <projectPath> <relativeOutputPath>");
+                            return;
                         }
+                        
+                        string donorPath = commandArray[1];
+                        ulong sectorHash = ulong.Parse(commandArray[2]);
+                        ulong shapeHash = ulong.Parse(commandArray[3]);
+                        string projectPath = commandArray[4];
+                        string relativeEntOutputPath = commandArray[5];
+                        string relativeMeshOutputPath = relativeEntOutputPath.Replace(".ent", ".mesh");
                         
                         Console.WriteLine("Initializing PxBridge...");
                         
@@ -92,22 +100,30 @@ namespace StaticCollisionConverter
                         
                         Console.WriteLine("Generating CMesh...");
                         
-                        GenerateCMesh.Generate(commandArray[1], ulong.Parse(commandArray[2]),
-                            ulong.Parse(commandArray[3]), commandArray[4].Replace(".ent", ".mesh"));
+                        GenerateCMesh.Generate(donorPath, sectorHash, shapeHash, Path.Join(projectPath, relativeMeshOutputPath));
                         
                         Console.WriteLine("Loading BV4...");
                         
-                        var bv4mesh =
-                            WolvenKitWrapper.Instance.GeometryCacheService.GetEntry(ulong.Parse(commandArray[2]),
-                                ulong.Parse(commandArray[3]));
+                        var bv4mesh = WolvenKitWrapper.Instance.GeometryCacheService.GetEntry(sectorHash, shapeHash);
                         
                         Console.WriteLine("Converting BV4 to DynCollMesh...");
                         
-                        var cookedColl = BV4ToDynCollMesh.Convert(bv4mesh as BV4TriangleMesh);
+                        dynCollMeshType colType;
+                        byte[] cookedColl;
+                        switch (bv4mesh)
+                        {
+                            case BV4TriangleMesh bv4Mesh:
+                                colType = dynCollMeshType.TriangleMesh;
+                                cookedColl = BV4ToDynCollMesh.Convert(bv4Mesh);
+                                break;
+                            case ConvexMesh convexMesh:
+                            default:
+                                throw new NotImplementedException();
+                        }
                         
                         Console.WriteLine("Generating Entity...");
                         
-                        var ent = GenerateEntity.Generate(commandArray[4], cookedColl, dynCollMeshType.TriangleMesh);
+                        var ent = GenerateEntity.Generate(relativeMeshOutputPath, cookedColl, colType);
                         
                         Console.WriteLine("Writing Entity to CR2W...");
                         
@@ -123,9 +139,9 @@ namespace StaticCollisionConverter
                                 writer.WriteFile(cr2wfile);
                             }
                 
-                            Directory.CreateDirectory(Path.GetDirectoryName(commandArray[4])!);
+                            Directory.CreateDirectory(Path.GetDirectoryName(Path.Join(projectPath, relativeEntOutputPath))!);
 
-                            File.WriteAllBytes(commandArray[4], meshStream.ToArray());
+                            File.WriteAllBytes(Path.Join(projectPath, relativeEntOutputPath), meshStream.ToArray());
                         }
                         
                         Console.WriteLine("Done!");
