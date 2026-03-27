@@ -11,12 +11,19 @@ public class GenerateCMesh
     public static void Generate(string meshPath, ulong sectorHash, ulong shapeHash, string outPath)
     {
         var wkit = WolvenKitWrapper.Instance;
+        var colMesh = wkit.GeometryCacheService.GetEntry(sectorHash, shapeHash);
+        if (colMesh == null)
+            return;
+        Generate(meshPath, colMesh, outPath);
+    }
+    
+    public static void Generate(string meshPath, PhysXMesh colMesh, string outPath)
+    {
+        var wkit = WolvenKitWrapper.Instance;
         using var meshFileStream = new FileStream(meshPath, FileMode.Open, FileAccess.Read);
         var cr2wfile = wkit.Red4ParserService.ReadRed4File(meshFileStream);
         if (cr2wfile?.RootChunk is not CMesh { RenderResourceBlob.Chunk: rendRenderMeshBlob } mesh)
             throw new InvalidDataException();
-
-        var colMesh = wkit.GeometryCacheService.GetEntry(sectorHash, shapeHash);
         
         var tempGlbPath = Path.GetTempFileName() + ".glb";
         try

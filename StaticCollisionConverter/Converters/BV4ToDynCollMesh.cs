@@ -8,8 +8,6 @@ public class BV4ToDynCollMesh
 {
     public static byte[] Convert(BV4TriangleMesh bv4)
     {
-        Console.WriteLine("Repacking vertices...");
-        
         var verts = new float[bv4.Vertices.Count * 3];
         var iv = 0;
         foreach (var vert in bv4.Vertices)
@@ -19,8 +17,6 @@ public class BV4ToDynCollMesh
             verts[iv + 2] = vert.Z;
             iv += 3;
         }
-        
-        Console.WriteLine("Repacking triangles...");
 
         var tris = new uint[bv4.Triangles.Count * 3];
         var it = 0;
@@ -32,8 +28,6 @@ public class BV4ToDynCollMesh
             it += 3;
         }
         
-        Console.WriteLine("Cooking mesh...");
-        
         var cookedGeo = PxBridge.PxBCookTriangleMesh(verts, (uint)verts.Length, tris, (uint)tris.Length);
         if (cookedGeo.size == 0)
             return [];
@@ -41,11 +35,8 @@ public class BV4ToDynCollMesh
         var buffer = new byte[cookedGeo.size];
         Marshal.Copy(cookedGeo.data, buffer, 0, (int)cookedGeo.size);
         
-        Console.WriteLine("Freeing buffer");
-        
         PxBridge.PxBFreeBuffer(cookedGeo.data);
-        
-        Console.WriteLine("Done!");
+
         return buffer;
     }
 }

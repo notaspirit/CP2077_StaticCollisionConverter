@@ -1,4 +1,5 @@
 ﻿using System.CommandLine.Parsing;
+using System.Diagnostics;
 using StaticCollisionConverter.Converters;
 using StaticCollisionConverter.Services;
 using WolvenKit.Common.PhysX;
@@ -125,6 +126,12 @@ namespace StaticCollisionConverter
                                 throw new NotImplementedException();
                         }
                         
+                        if (cookedColl.Length == 0)
+                        {
+                            Console.WriteLine($"Failed to cook shape for {sectorHash}, {shapeHash} for entity, {colType}");
+                            return;
+                        }
+                        
                         Console.WriteLine("Generating Entity...");
                         
                         var ent = GenerateEntity.Generate(relativeMeshOutputPath, [cookedColl], colType);
@@ -196,6 +203,32 @@ namespace StaticCollisionConverter
                             File.WriteAllBytes(Path.Join(projPath, relativeOutputPath), meshStream.ToArray());
                         }
                         break;
+                    case "generate-all-geometry-cache-entries":
+                        if (commandArray.Length != 5)
+                        {
+                            Console.WriteLine("This command requires 2 parameters!");
+                            Console.WriteLine("Usage: generate-all-geometry-cache-entries <donormesh> <projectPath> <relativeMeshOut> <relativeEntOut>");
+                            return;
+                        }
+
+                        if (!PxBridge.PxBInit())
+                        {
+                            Console.WriteLine("Failed to initialize PxBridge!");
+                            return;
+                        }
+                        
+                        var allDonorMesh = commandArray[1];
+                        var allProjectPath = commandArray[2];
+                        var allRelativeMeshDir = commandArray[3];
+                        var allRelativeEntDir = commandArray[4];
+
+                        var sw = new Stopwatch();
+                        sw.Start();
+                        GenerateAllGeometryCacheEntries.Generate(allDonorMesh, allProjectPath, allRelativeMeshDir, allRelativeEntDir);
+                        sw.Stop();
+                        
+                        Console.WriteLine($"Done! Took {FormatElapsedTime(sw.Elapsed)}");
+                        break;
                     case "help":
                         Console.WriteLine("Available commands:");
                         Console.WriteLine("  exit: exit - exits the program");
@@ -212,6 +245,26 @@ namespace StaticCollisionConverter
                 Console.WriteLine($"Failed to execute command: {command} with exception: {e}");   
             }
            
+            static string FormatElapsedTime(TimeSpan elapsed)
+            {
+                var parts = new List<string>();
+        
+                if (elapsed.Hours > 0)
+                {
+                    parts.Add($"{elapsed.Hours} hour{(elapsed.Hours == 1 ? "" : "s")}");
+                }
+                if (elapsed.Minutes > 0)
+                {
+                    parts.Add($"{elapsed.Minutes} minute{(elapsed.Minutes == 1 ? "" : "s")}");
+                }
+                if (elapsed.Seconds > 0 || parts.Count == 0)
+                {
+                    parts.Add($"{elapsed.Seconds}.{elapsed.Milliseconds:D3} seconds");
+                }
+        
+                return string.Join(", ", parts);
+            }
+            
         }
         /// <summary>
         /// Splits the string to an array of arguments
