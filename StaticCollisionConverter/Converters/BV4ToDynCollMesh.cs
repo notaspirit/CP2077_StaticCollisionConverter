@@ -10,7 +10,7 @@ public class BV4ToDynCollMesh
     {
         Console.WriteLine("Repacking vertices...");
         
-        var verts = new float[bv4.NbVertices * 3];
+        var verts = new float[bv4.Vertices.Count * 3];
         var iv = 0;
         foreach (var vert in bv4.Vertices)
         {
@@ -22,7 +22,7 @@ public class BV4ToDynCollMesh
         
         Console.WriteLine("Repacking triangles...");
 
-        var tris = new uint[bv4.NbTriangles * 3];
+        var tris = new uint[bv4.Triangles.Count * 3];
         var it = 0;
         foreach (var tri in bv4.Triangles)
         {
