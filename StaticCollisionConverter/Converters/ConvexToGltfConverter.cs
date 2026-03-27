@@ -50,21 +50,29 @@ public static class ConvexToGltfConverter
                 var v1 = vertices[idx1];
                 var v2 = vertices[idx2];
 
-                var p0 = new Vector3(v0.X, v0.Y, v0.Z);
-                var p1 = new Vector3(v1.X, v1.Y, v1.Z);
-                var p2 = new Vector3(v2.X, v2.Y, v2.Z);
+                // Convert from WolvenKit space to glTF space
+                // WolvenKit: (x, y, z) LHS Z+
+                // glTF: (x, z, -y) RHS Y+
+                // This is the inverse of WolvenKit's import: (x, -z, y)
+                var p0 = new Vector3(v0.X, v0.Z, -v0.Y);
+                var p1 = new Vector3(v1.X, v1.Z, -v1.Y);
+                var p2 = new Vector3(v2.X, v2.Z, -v2.Y);
 
-                // Calculate Normal
-                var edge1 = p1 - p0;
-                var edge2 = p2 - p0;
-                var normal = Vector3.Normalize(Vector3.Cross(edge1, edge2));
+                // Calculate Normal in glTF space
+                // Face winding is (vp1, vp0, vp2), so normal is Normalize(Cross(vp0 - vp1, vp2 - vp1))
+                var normal = -Vector3.Normalize(Vector3.Cross(p0 - p1, p2 - p1));
 
                 // UVs: a triangle that covers half of the UV space
                 var uv0 = new Vector2(0, 0);
                 var uv1 = new Vector2(1, 0);
                 var uv2 = new Vector2(0, 1);
 
-                // Calculate Tangent (same as BV4ToGltfConverter)
+                // Calculate Tangent in glTF space
+                // Tangent should be aligned with UV.x direction (uv1 - uv0)
+                // Since we swap p0 and p1 in AddTriangle, we should ensure the tangent is consistent.
+                // In the triangle (vp1, vp0, vp2) with UVs (uv1, uv0, uv2):
+                // uv1 = (1,0), uv0 = (0,0), uv2 = (0,1)
+                // Tangent is direction of (UV=1,0) - (UV=0,0), which is p1 - p0.
                 var tangentVec = Vector3.Normalize(p1 - p0);
                 var tangent = new Vector4(tangentVec.X, tangentVec.Y, tangentVec.Z, 1.0f);
 
