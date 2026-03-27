@@ -4,6 +4,7 @@ using StaticCollisionConverter.Services;
 using WolvenKit.Common.PhysX;
 using WolvenKit.RED4.Archive.CR2W;
 using WolvenKit.RED4.Archive.IO;
+using WolvenKit.RED4.Types;
 
 namespace StaticCollisionConverter
 {
@@ -126,7 +127,7 @@ namespace StaticCollisionConverter
                         
                         Console.WriteLine("Generating Entity...");
                         
-                        var ent = GenerateEntity.Generate(relativeMeshOutputPath, cookedColl, colType);
+                        var ent = GenerateEntity.Generate(relativeMeshOutputPath, [cookedColl], colType);
                         
                         Console.WriteLine("Writing Entity to CR2W...");
                         
@@ -148,6 +149,52 @@ namespace StaticCollisionConverter
                         }
                         
                         Console.WriteLine("Done!");
+                        break;
+                    case "convert-single-cmesh-to-entity":
+                        if (commandArray.Length != 4)
+                        {
+                            Console.WriteLine("This command requires 3 parameters!");
+                            Console.WriteLine(
+                                "Usage: convert-single-cmesh <projectPath> <relative path to cmesh> <relativeOutputPath>");
+                            return;
+                        }
+                        
+                        
+                        var projPath = commandArray[1];
+                        var meshPath = commandArray[2];
+                        var relativeOutputPath = commandArray[3];
+                        
+                        PxBridge.PxBInit();
+                        
+                        var wkit = WolvenKitWrapper.Instance;
+                        List<byte[]> collMeshes;
+                        using (var meshFileStream = new FileStream(Path.Join(projPath, meshPath), FileMode.Open, FileAccess.Read))
+                        {
+                            var cr2wfileCmesh = wkit.Red4ParserService.ReadRed4File(meshFileStream);
+                            if (cr2wfileCmesh?.RootChunk is not CMesh { RenderResourceBlob.Chunk: rendRenderMeshBlob } mesh)
+                                throw new InvalidDataException();
+                        
+                            collMeshes = CMeshToDynCollMesh.Convert(mesh);
+                        };
+                        
+                        var cmeshent = GenerateEntity.Generate(meshPath, collMeshes, dynCollMeshType.TriangleMesh);
+                        
+                        var cr2wfileent = new CR2WFile()
+                        {
+                            RootChunk = cmeshent
+                        };
+
+                        using (var meshStream = new MemoryStream())
+                        {
+                            using (var writer = new CR2WWriter(meshStream))
+                            {
+                                writer.WriteFile(cr2wfileent);
+                            }
+                
+                            Directory.CreateDirectory(Path.GetDirectoryName(Path.Join(projPath, relativeOutputPath))!);
+
+                            File.WriteAllBytes(Path.Join(projPath, relativeOutputPath), meshStream.ToArray());
+                        }
                         break;
                     case "help":
                         Console.WriteLine("Available commands:");

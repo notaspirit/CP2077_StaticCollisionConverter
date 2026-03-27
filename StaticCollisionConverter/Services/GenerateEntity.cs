@@ -14,7 +14,7 @@ public enum dynCollMeshType
 public class GenerateEntity
 {
     private static Random random = new Random();
-    public static entEntityTemplate Generate(string CMeshPath, byte[] dynCollMesh, dynCollMeshType meshType)
+    public static entEntityTemplate Generate(string CMeshPath, List<byte[]> dynCollMeshes, dynCollMeshType meshType)
     {
         var entity = new entEntityTemplate()
         {
@@ -28,53 +28,56 @@ public class GenerateEntity
                 Mesh = new CResourceAsyncReference<CMesh>(CMeshPath),
                 Id = random.NextCRUID(),
                 Name = "Visual Mesh"
-            }
-            );
+            });
 
-        var collComp = new entColliderComponent()
+        foreach (var dynCollMesh in dynCollMeshes)
         {
-            Id = random.NextCRUID(),
-            Name = "Collision Mesh",
-            Colliders = new CArray<CHandle<physicsICollider>>(),
-            FilterData = new physicsFilterData()
+            var collComp = new entColliderComponent()
             {
-                Preset = "World Static",
-                QueryFilter = new physicsQueryFilter()
+                Id = random.NextCRUID(),
+                Name = $"Collision Mesh {dynCollMeshes.IndexOf(dynCollMesh)}",
+                Colliders = new CArray<CHandle<physicsICollider>>(),
+                FilterData = new physicsFilterData()
                 {
-                    Mask1 = 0,
-                    Mask2 = 70107400
+                    Preset = "World Static",
+                    QueryFilter = new physicsQueryFilter()
+                    {
+                        Mask1 = 0,
+                        Mask2 = 70107400
+                    },
+                    SimulationFilter = new physicsSimulationFilter()
+                    {
+                        Mask1 = 114696,
+                        Mask2 = 23627
+                    }
                 },
-                SimulationFilter = new physicsSimulationFilter()
-                {
-                    Mask1 = 114696,
-                    Mask2 = 23627
-                }
-            },
-            Volume = 1,
-            Mass = 1
-        };
+                Volume = 1,
+                Mass = 1
+            };
         
-        collComp.Colliders = new CArray<CHandle<physicsICollider>>();
-        switch (meshType)
-        {
-            case dynCollMeshType.TriangleMesh:
-                collComp.Colliders.Add(new physicsColliderMesh()
-                {
-                    CompiledGeometryBuffer = new DataBuffer(dynCollMesh)
-                });
-                break;
-            case dynCollMeshType.ConvexMesh:
-                collComp.Colliders.Add(new physicsColliderConvex()
-                {
-                    CompiledGeometryBuffer = new DataBuffer(dynCollMesh)
-                });
-                break;
-            case dynCollMeshType.Invalid:
-            default:
-                throw new InvalidOperationException($"Type {meshType} is not supported");
+            collComp.Colliders = new CArray<CHandle<physicsICollider>>();
+            switch (meshType)
+            {
+                case dynCollMeshType.TriangleMesh:
+                    collComp.Colliders.Add(new physicsColliderMesh()
+                    {
+                        CompiledGeometryBuffer = new DataBuffer(dynCollMesh)
+                    });
+                    break;
+                case dynCollMeshType.ConvexMesh:
+                    collComp.Colliders.Add(new physicsColliderConvex()
+                    {
+                        CompiledGeometryBuffer = new DataBuffer(dynCollMesh)
+                    });
+                    break;
+                case dynCollMeshType.Invalid:
+                default:
+                    throw new InvalidOperationException($"Type {meshType} is not supported");
+            }
+        
+            entity.Components.Add(collComp);
         }
         
-        entity.Components.Add(collComp);
         return entity;
     }
 }
