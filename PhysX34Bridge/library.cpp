@@ -1,6 +1,8 @@
 #define PHYSX_WRAPPER_EXPORTS
 #include "library.h"
 
+#include <fstream>
+
 extern "C"
 {
     bool PxBInit()
@@ -62,7 +64,7 @@ extern "C"
         physx::PxDefaultMemoryOutputStream buf;
 
         physx::PxTriangleMeshDesc desc;
-        desc.points.count = vertexCount;
+        desc.points.count = vertexCount / 3;
         desc.points.stride = sizeof(float) * 3;
         desc.points.data = vertices;
         desc.triangles.count = indexCount / 3;
