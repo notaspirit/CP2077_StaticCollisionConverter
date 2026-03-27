@@ -117,6 +117,9 @@ namespace StaticCollisionConverter
                                 cookedColl = BV4ToDynCollMesh.Convert(bv4Mesh);
                                 break;
                             case ConvexMesh convexMesh:
+                                colType = dynCollMeshType.ConvexMesh;
+                                cookedColl = ConvexToDynCollMesh.Convert(convexMesh);
+                                break;
                             default:
                                 throw new NotImplementedException();
                         }
