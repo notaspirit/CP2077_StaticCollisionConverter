@@ -12,7 +12,7 @@ namespace StaticCollisionConverter.Converters;
 
 public static class ConvexToGltfConverter
 {
-    public static void Convert(ConvexMesh convex, string outputPath)
+    public static ArraySegment<byte> Convert(ConvexMesh convex)
     {
         var hullData = convex.HullData;
         var vertices = hullData.HullVertices;
@@ -107,6 +107,6 @@ public static class ConvexToGltfConverter
             model.LogicalNodes[0].Name = "LOD_1";
         }
 
-        model.SaveGLB(outputPath);
+        return model.WriteGLB();
     }
 }

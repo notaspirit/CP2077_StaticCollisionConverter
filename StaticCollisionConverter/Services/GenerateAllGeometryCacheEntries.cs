@@ -18,17 +18,21 @@ public class GenerateAllGeometryCacheEntries
         if (skipMesh && skipEnt)
             return;
         
-        Oodle.Load();
+        var cmeshGen = new GenerateCMesh();
+        cmeshGen.SetDonorMesh(donorMesh);
         
         Directory.CreateDirectory(Path.Join(projectPath, relativeEntDir));
         Directory.CreateDirectory(Path.Join(projectPath, relativeMeshDir));
         
-        wkit.GeometryCacheService.Load();
+        var loadedTaskField = typeof(GeometryCacheService)
+            .GetField("_loadedTask", BindingFlags.Instance | BindingFlags.NonPublic);
+        if (loadedTaskField?.GetValue(wkit.GeometryCacheService) is not Task<bool> { IsCompleted: true })
+            wkit.GeometryCacheService.Load();
         
-        var field = typeof(GeometryCacheService)
+        var entries = typeof(GeometryCacheService)
             .GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic);
         
-        var fieldValue = field.GetValue(wkit.GeometryCacheService);
+        var fieldValue = entries.GetValue(wkit.GeometryCacheService);
         if (fieldValue is not Dictionary<ulong, Dictionary<ulong, PhysXMesh>> geoCache)
             throw new Exception("WolvenKits GeometryCacheService._entries is not a Dictionary<ulong, Dictionary<ulong, PhysXMesh>>! Aborting...");
         
@@ -69,7 +73,7 @@ public class GenerateAllGeometryCacheEntries
             
             Console.WriteLine($"Processing shape for {sectorHash}, {shapeHash} with type  {shape.GetType()}");
             if (!skipMesh)
-                GenerateCMesh.Generate(donorMesh, shape, Path.Join(projectPath, relativeMeshDir, $"{filename}.mesh"));
+                cmeshGen.Generate(shape);
             
             if (skipEnt)
                 return;
@@ -99,14 +103,10 @@ public class GenerateAllGeometryCacheEntries
             
             // don't generate the mesh component for world builder, it gets attached at runtime
             var ent = GenerateEntity.Generate(null, [cookedColl], colType);
-            var cr2went = new CR2WFile()
-            {
-                RootChunk = ent
-            };
 
             using var meshStream = new MemoryStream();
             using var writer = new CR2WWriter(meshStream);
-            writer.WriteFile(cr2went);
+            writer.WriteFile(ent);
             
             File.WriteAllBytes(Path.Join(projectPath, relativeEntDir, $"{filename}.ent"), meshStream.ToArray());
         }

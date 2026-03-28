@@ -1,4 +1,5 @@
 using WolvenKit.Core.Extensions;
+using WolvenKit.RED4.Archive.CR2W;
 using WolvenKit.RED4.Types;
 
 namespace StaticCollisionConverter.Services;
@@ -14,7 +15,7 @@ public enum dynCollMeshType
 public class GenerateEntity
 {
     private static Random random = new Random();
-    public static entEntityTemplate Generate(string? CMeshPath, List<byte[]> dynCollMeshes, dynCollMeshType meshType)
+    public static CR2WFile Generate(string? CMeshPath, List<byte[]> dynCollMeshes, dynCollMeshType meshType)
     {
         var entity = new entEntityTemplate()
         {
@@ -79,6 +80,9 @@ public class GenerateEntity
             entity.Components.Add(collComp);
         }
         
-        return entity;
+        return new CR2WFile()
+        {
+            RootChunk = entity
+        };
     }
 }

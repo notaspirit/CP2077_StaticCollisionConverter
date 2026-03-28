@@ -12,7 +12,7 @@ namespace StaticCollisionConverter.Converters;
 
 public static class BV4ToGltfConverter
 {
-    public static void Convert(BV4TriangleMesh bv4, string outputPath)
+    public static ArraySegment<byte> Convert(BV4TriangleMesh bv4)
     {
         var vertices = bv4.Vertices;
         var triangles = bv4.Triangles;
@@ -89,6 +89,6 @@ public static class BV4ToGltfConverter
             model.LogicalNodes[0].Name = "LOD_1";
         }
 
-        model.SaveGLB(outputPath);
+        return model.WriteGLB();
     }
 }

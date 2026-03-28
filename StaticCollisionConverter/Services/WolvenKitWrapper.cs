@@ -1,7 +1,9 @@
 using System;
 using System.IO;
+using StaticCollisionConverter.WolvenKitExtensions;
 using WolvenKit;
 using WolvenKit.Common.Services;
+using WolvenKit.Core.Compression;
 using WolvenKit.Core.Interfaces;
 using WolvenKit.Core.Services;
 using WolvenKit.Modkit.RED4;
@@ -22,11 +24,14 @@ public class WolvenKitWrapper
     public IProgressService<double> ProgressService;
     public ILoggerService LoggerService;
     public ModTools ModTools;
+    public WolvenKitExtensions.ModToolsExtension ModToolExtensions;
     
     private WolvenKitWrapper(string gameExePath, bool enableMods = false)
     {
         if (string.IsNullOrEmpty(gameExePath)) throw new ArgumentNullException(nameof(gameExePath), "Game executable path cannot be null or empty.");
         if (!File.Exists(gameExePath)) throw new FileNotFoundException("Game executable path cannot be found.");
+        
+        Oodle.Load();
         
         LoggerService = new SerilogWrapper();
         ProgressService = new ProgressService<double>();
@@ -40,6 +45,7 @@ public class WolvenKitWrapper
         GeometryCacheService = new GeometryCacheService(ArchiveManager, Red4ParserService);
         
         ModTools = new ModTools(LoggerService, ProgressService, HashService, Red4ParserService, ArchiveManager, HookService);
+        ModToolExtensions = new ModToolsExtension(this);
     }
 
     /// <summary>

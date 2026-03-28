@@ -3,6 +3,7 @@ using System.Diagnostics;
 using System.Reflection;
 using StaticCollisionConverter.Converters;
 using StaticCollisionConverter.Services;
+using StaticCollisionConverter.WolvenKitExtensions;
 using WolvenKit.Common.PhysX;
 using WolvenKit.Common.Services;
 using WolvenKit.RED4.Archive.CR2W;
@@ -79,8 +80,22 @@ namespace StaticCollisionConverter
                             Console.WriteLine("Usage: convert-single-collision <path to donor> <sectorHash> <shapeHash> <outputPath>");
                             return;
                         }
-
-                        GenerateCMesh.Generate(commandArray[1], ulong.Parse(commandArray[2]), ulong.Parse(commandArray[3]), commandArray[4]);
+                        
+                        var genCMesh = new GenerateCMesh();
+                        
+                        genCMesh.SetDonorMesh(commandArray[1]);
+                        
+                        var cmesh = genCMesh.Generate(ulong.Parse(commandArray[2]), ulong.Parse(commandArray[3]));
+                        
+                        genCMesh.ReleaseDonorMesh();
+                        
+                        if (cmesh == null)
+                        {
+                            Console.WriteLine("Failed to generate CMesh!");
+                            return;
+                        }
+                        
+                        CR2WFileWriter.Write(cmesh, commandArray[4]);
                         break;
                     case "convert-single-collision-to-entity":
                         if (commandArray.Length != 6)
@@ -98,23 +113,21 @@ namespace StaticCollisionConverter
                         string relativeEntOutputPath = commandArray[5];
                         string relativeMeshOutputPath = relativeEntOutputPath.Replace(".ent", ".mesh");
                         
-                        Console.WriteLine("Initializing PxBridge...");
-                        
                         PxBridge.PxBInit();
+                        var genCMeshForEnt = new GenerateCMesh();
+                        genCMeshForEnt.SetDonorMesh(donorPath);
                         
-                        Console.WriteLine("Generating CMesh...");
+                        var colMesh = WolvenKitWrapper.Instance.GeometryCacheService.GetEntry(sectorHash, shapeHash);
                         
-                        GenerateCMesh.Generate(donorPath, sectorHash, shapeHash, Path.Join(projectPath, relativeMeshOutputPath));
-                        
-                        Console.WriteLine("Loading BV4...");
-                        
-                        var bv4mesh = WolvenKitWrapper.Instance.GeometryCacheService.GetEntry(sectorHash, shapeHash);
-                        
-                        Console.WriteLine("Converting BV4 to DynCollMesh...");
+                        var cmeshForEnt = genCMeshForEnt.Generate(colMesh);
+                        if (cmeshForEnt == null)
+                            throw new Exception("Failed to generate CMesh!");
+                        genCMeshForEnt.ReleaseDonorMesh();
+                        CR2WFileWriter.Write(cmeshForEnt, Path.Join(projectPath, relativeMeshOutputPath));
                         
                         dynCollMeshType colType;
                         byte[] cookedColl;
-                        switch (bv4mesh)
+                        switch (colMesh)
                         {
                             case BV4TriangleMesh bv4Mesh:
                                 colType = dynCollMeshType.TriangleMesh;
@@ -134,28 +147,9 @@ namespace StaticCollisionConverter
                             return;
                         }
                         
-                        Console.WriteLine("Generating Entity...");
-                        
                         var ent = GenerateEntity.Generate(relativeMeshOutputPath, [cookedColl], colType);
                         
-                        Console.WriteLine("Writing Entity to CR2W...");
-                        
-                        var cr2wfile = new CR2WFile()
-                        {
-                            RootChunk = ent
-                        };
-
-                        using (var meshStream = new MemoryStream())
-                        {
-                            using (var writer = new CR2WWriter(meshStream))
-                            {
-                                writer.WriteFile(cr2wfile);
-                            }
-                
-                            Directory.CreateDirectory(Path.GetDirectoryName(Path.Join(projectPath, relativeEntOutputPath))!);
-
-                            File.WriteAllBytes(Path.Join(projectPath, relativeEntOutputPath), meshStream.ToArray());
-                        }
+                        CR2WFileWriter.Write(ent, Path.Join(projectPath, relativeEntOutputPath));
                         
                         Console.WriteLine("Done!");
                         break;
@@ -186,24 +180,9 @@ namespace StaticCollisionConverter
                             collMeshes = CMeshToDynCollMesh.Convert(mesh);
                         };
                         
-                        var cmeshent = GenerateEntity.Generate(meshPath, collMeshes, dynCollMeshType.TriangleMesh);
+                        var cr2wfileent = GenerateEntity.Generate(meshPath, collMeshes, dynCollMeshType.TriangleMesh);
                         
-                        var cr2wfileent = new CR2WFile()
-                        {
-                            RootChunk = cmeshent
-                        };
-
-                        using (var meshStream = new MemoryStream())
-                        {
-                            using (var writer = new CR2WWriter(meshStream))
-                            {
-                                writer.WriteFile(cr2wfileent);
-                            }
-                
-                            Directory.CreateDirectory(Path.GetDirectoryName(Path.Join(projPath, relativeOutputPath))!);
-
-                            File.WriteAllBytes(Path.Join(projPath, relativeOutputPath), meshStream.ToArray());
-                        }
+                        CR2WFileWriter.Write(cr2wfileent, Path.Join(projPath, relativeOutputPath));
                         break;
                     case "generate-all-geometry-cache-entries":
                         if (commandArray.Length < 5)
