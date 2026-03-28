@@ -13,16 +13,18 @@ public class GenerateAllGeometryCacheEntries
 {
     private static WolvenKitWrapper wkit = WolvenKitWrapper.Instance;
     
-    public static void Generate(string donorMesh, string projectPath, string relativeMeshDir, string relativeEntDir, bool skipMesh, bool skipEnt)
+    public static void Generate(string donorMesh, string outPath, string relativeMeshDir, string relativeEntDir, bool skipMesh, bool skipEnt)
     { 
+        Console.WriteLine($"Generating all geometry cache entries for {donorMesh} to {outPath}");
         if (skipMesh && skipEnt)
             return;
         
+        Console.WriteLine("Initializing Dependencies...");
+        
+        var memFiles = new Dictionary<string, byte[]>();
+        
         var cmeshGen = new GenerateCMesh();
         cmeshGen.SetDonorMesh(donorMesh);
-        
-        Directory.CreateDirectory(Path.Join(projectPath, relativeEntDir));
-        Directory.CreateDirectory(Path.Join(projectPath, relativeMeshDir));
         
         var loadedTaskField = typeof(GeometryCacheService)
             .GetField("_loadedTask", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -36,9 +38,21 @@ public class GenerateAllGeometryCacheEntries
         if (fieldValue is not Dictionary<ulong, Dictionary<ulong, PhysXMesh>> geoCache)
             throw new Exception("WolvenKits GeometryCacheService._entries is not a Dictionary<ulong, Dictionary<ulong, PhysXMesh>>! Aborting...");
         
-        foreach (var sectorEntry in geoCache)
-            ProcessSectorHash(sectorEntry.Key, sectorEntry.Value);
+        Console.WriteLine("Processing Geometry Cache Entries...");
 
+        var processed = 0;
+        foreach (var sectorEntry in geoCache)
+        {
+            ProcessSectorHash(sectorEntry.Key, sectorEntry.Value);
+            Console.WriteLine($"Processed {processed++} / {geoCache.Keys.Count} entries");
+        }
+        
+        Console.WriteLine("Packing Archive...");
+        
+        Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
+        using var archiveStream = new FileStream(outPath, FileMode.Create, FileAccess.Write);
+        wkit.MemoryArchiveWriter.WriteArchive(memFiles, archiveStream);
+        
         return;
         
         void ProcessSectorHash(ulong sectorHash, Dictionary<ulong, PhysXMesh> shapeEntries)
@@ -61,19 +75,20 @@ public class GenerateAllGeometryCacheEntries
         void ProcessShape(ulong sectorHash, ulong shapeHash, PhysXMesh shape)
         {
             var filename = $"{sectorHash}_{shapeHash}";
-            
-            if (
-                (skipMesh || File.Exists(Path.Join(projectPath, relativeMeshDir, $"{filename}.mesh"))) && 
-                (skipEnt || File.Exists(Path.Join(projectPath, relativeEntDir, $"{filename}.ent")))
-                )
-            {
-                Console.WriteLine($"Skipping shape for {sectorHash}, {shapeHash} because it already exists");
-                return;
-            }
-            
-            Console.WriteLine($"Processing shape for {sectorHash}, {shapeHash} with type  {shape.GetType()}");
+            var meshName = Path.Join(relativeMeshDir, $"{filename}.mesh");
+            var entName = Path.Join(relativeEntDir, $"{filename}.ent");
+
+            // Console.WriteLine($"Processing shape for {sectorHash}, {shapeHash} with type  {shape.GetType()}");
             if (!skipMesh)
-                cmeshGen.Generate(shape);
+            {
+                var cmesh = cmeshGen.Generate(shape);
+                using var meshStream = new MemoryStream();
+                using (var meshWriter = new CR2WWriter(meshStream))
+                {
+                    meshWriter.WriteFile(cmesh);
+                }
+                memFiles.Add(meshName, meshStream.ToArray());
+            }
             
             if (skipEnt)
                 return;
@@ -104,11 +119,11 @@ public class GenerateAllGeometryCacheEntries
             // don't generate the mesh component for world builder, it gets attached at runtime
             var ent = GenerateEntity.Generate(null, [cookedColl], colType);
 
-            using var meshStream = new MemoryStream();
-            using var writer = new CR2WWriter(meshStream);
-            writer.WriteFile(ent);
+            using var entStream = new MemoryStream();
+            using var entWriter = new CR2WWriter(entStream);
+            entWriter.WriteFile(ent);
             
-            File.WriteAllBytes(Path.Join(projectPath, relativeEntDir, $"{filename}.ent"), meshStream.ToArray());
+            memFiles.Add(entName, entStream.ToArray());
         }
     }
 }

@@ -7,6 +7,7 @@ using WolvenKit.Core.Compression;
 using WolvenKit.Core.Interfaces;
 using WolvenKit.Core.Services;
 using WolvenKit.Modkit.RED4;
+using WolvenKit.RED4.Archive.IO;
 using WolvenKit.RED4.CR2W;
 using WolvenKit.RED4.CR2W.Archive;
 
@@ -24,6 +25,8 @@ public class WolvenKitWrapper
     public IProgressService<double> ProgressService;
     public ILoggerService LoggerService;
     public ModTools ModTools;
+    public ArchiveWriter ArchiveWriter;
+    public MemoryArchiveWriter MemoryArchiveWriter;
     public WolvenKitExtensions.ModToolsExtension ModToolExtensions;
     
     private WolvenKitWrapper(string gameExePath, bool enableMods = false)
@@ -45,6 +48,9 @@ public class WolvenKitWrapper
         GeometryCacheService = new GeometryCacheService(ArchiveManager, Red4ParserService);
         
         ModTools = new ModTools(LoggerService, ProgressService, HashService, Red4ParserService, ArchiveManager, HookService);
+        ArchiveWriter = new ArchiveWriter(HashService, LoggerService);
+        MemoryArchiveWriter = new MemoryArchiveWriter(this);
+        
         ModToolExtensions = new ModToolsExtension(this);
     }
 
