@@ -1,8 +1,10 @@
 ﻿using System.CommandLine.Parsing;
 using System.Diagnostics;
+using System.Reflection;
 using StaticCollisionConverter.Converters;
 using StaticCollisionConverter.Services;
 using WolvenKit.Common.PhysX;
+using WolvenKit.Common.Services;
 using WolvenKit.RED4.Archive.CR2W;
 using WolvenKit.RED4.Archive.IO;
 using WolvenKit.RED4.Types;
@@ -204,10 +206,10 @@ namespace StaticCollisionConverter
                         }
                         break;
                     case "generate-all-geometry-cache-entries":
-                        if (commandArray.Length != 5)
+                        if (commandArray.Length < 5)
                         {
                             Console.WriteLine("This command requires 2 parameters!");
-                            Console.WriteLine("Usage: generate-all-geometry-cache-entries <donormesh> <projectPath> <relativeMeshOut> <relativeEntOut>");
+                            Console.WriteLine("Usage: generate-all-geometry-cache-entries <donormesh> <projectPath> <relativeMeshOut> <relativeEntOut> <skip (optional): CMesh | Ent >");
                             return;
                         }
 
@@ -221,13 +223,47 @@ namespace StaticCollisionConverter
                         var allProjectPath = commandArray[2];
                         var allRelativeMeshDir = commandArray[3];
                         var allRelativeEntDir = commandArray[4];
+                        var allSkipCmesh = false;
+                        var allskipEnt = false;
+                        if (commandArray.Length > 5)
+                        {
+                            switch (commandArray[5].ToLower())
+                            {
+                                case "cmesh":
+                                    allSkipCmesh = true;
+                                    break;
+                                case "ent":
+                                    allskipEnt = true;
+                                    break;
+                                default:
+                                    Console.WriteLine("Invalid argument for skip parameter! Must be 'CMesh' or 'Ent' or not present");
+                                    return;
+                            }
+                        }
+                            
 
                         var sw = new Stopwatch();
                         sw.Start();
-                        GenerateAllGeometryCacheEntries.Generate(allDonorMesh, allProjectPath, allRelativeMeshDir, allRelativeEntDir);
+                        GenerateAllGeometryCacheEntries.Generate(allDonorMesh, allProjectPath, allRelativeMeshDir, allRelativeEntDir, allSkipCmesh, allskipEnt);
                         sw.Stop();
                         
                         Console.WriteLine($"Done! Took {FormatElapsedTime(sw.Elapsed)}");
+                        break;
+                    case "count-shapes":
+                        wkit = WolvenKitWrapper.Instance;
+                        wkit.GeometryCacheService.Load();
+        
+                        var field = typeof(GeometryCacheService)
+                            .GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic);
+        
+                        var fieldValue = field.GetValue(wkit.GeometryCacheService);
+                        if (fieldValue is not Dictionary<ulong, Dictionary<ulong, PhysXMesh>> geoCache)
+                            throw new Exception("WolvenKits GeometryCacheService._entries is not a Dictionary<ulong, Dictionary<ulong, PhysXMesh>>! Aborting...");
+
+                        ulong count = geoCache.Aggregate<KeyValuePair<ulong, Dictionary<ulong, PhysXMesh>>, ulong>(0, (current, sectorEntry) => current + (ulong)sectorEntry.Value.Count);
+                        
+                        Console.WriteLine($"There are {count} shapes in the GeometryCache!");
+                        
                         break;
                     case "help":
                         Console.WriteLine("Available commands:");

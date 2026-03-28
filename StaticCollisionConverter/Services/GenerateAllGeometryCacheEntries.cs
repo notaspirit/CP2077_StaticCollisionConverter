@@ -2,6 +2,7 @@ using System.Reflection;
 using StaticCollisionConverter.Converters;
 using WolvenKit.Common.PhysX;
 using WolvenKit.Common.Services;
+using WolvenKit.Core.Compression;
 using WolvenKit.RED4.Archive.Buffer;
 using WolvenKit.RED4.Archive.CR2W;
 using WolvenKit.RED4.Archive.IO;
@@ -12,8 +13,13 @@ public class GenerateAllGeometryCacheEntries
 {
     private static WolvenKitWrapper wkit = WolvenKitWrapper.Instance;
     
-    public static void Generate(string donorMesh, string projectPath, string relativeMeshDir, string relativeEntDir)
-    {
+    public static void Generate(string donorMesh, string projectPath, string relativeMeshDir, string relativeEntDir, bool skipMesh, bool skipEnt)
+    { 
+        if (skipMesh && skipEnt)
+            return;
+        
+        Oodle.Load();
+        
         Directory.CreateDirectory(Path.Join(projectPath, relativeEntDir));
         Directory.CreateDirectory(Path.Join(projectPath, relativeMeshDir));
         
@@ -25,12 +31,6 @@ public class GenerateAllGeometryCacheEntries
         var fieldValue = field.GetValue(wkit.GeometryCacheService);
         if (fieldValue is not Dictionary<ulong, Dictionary<ulong, PhysXMesh>> geoCache)
             throw new Exception("WolvenKits GeometryCacheService._entries is not a Dictionary<ulong, Dictionary<ulong, PhysXMesh>>! Aborting...");
-
-        /*
-        var sectorTasks = geoCache.Select(kvp => Task.Run(() => ProcessSectorHash(kvp.Key, kvp.Value)));
-
-        Task.WhenAll(sectorTasks).Wait();
-        */
         
         foreach (var sectorEntry in geoCache)
             ProcessSectorHash(sectorEntry.Key, sectorEntry.Value);
@@ -39,12 +39,6 @@ public class GenerateAllGeometryCacheEntries
         
         void ProcessSectorHash(ulong sectorHash, Dictionary<ulong, PhysXMesh> shapeEntries)
         {
-            /*
-            var shapeTasks = shapeEntries.Select(kvp => Task.Run(() => ProcessShape(sectorHash, kvp.Key, kvp.Value)));
-
-            Task.WhenAll(shapeTasks);
-            */
-            
             foreach (var shapeEntry in shapeEntries)
             {
                 try
@@ -64,16 +58,21 @@ public class GenerateAllGeometryCacheEntries
         {
             var filename = $"{sectorHash}_{shapeHash}";
             
-            if (File.Exists(Path.Join(projectPath, relativeMeshDir, $"{filename}.mesh")) &&
-                File.Exists(Path.Join(projectPath, relativeEntDir, $"{filename}.ent")))
+            if (
+                (skipMesh || File.Exists(Path.Join(projectPath, relativeMeshDir, $"{filename}.mesh"))) && 
+                (skipEnt || File.Exists(Path.Join(projectPath, relativeEntDir, $"{filename}.ent")))
+                )
             {
                 Console.WriteLine($"Skipping shape for {sectorHash}, {shapeHash} because it already exists");
                 return;
             }
             
             Console.WriteLine($"Processing shape for {sectorHash}, {shapeHash} with type  {shape.GetType()}");
+            if (!skipMesh)
+                GenerateCMesh.Generate(donorMesh, shape, Path.Join(projectPath, relativeMeshDir, $"{filename}.mesh"));
             
-            GenerateCMesh.Generate(donorMesh, shape, Path.Join(projectPath, relativeMeshDir, $"{filename}.mesh"));
+            if (skipEnt)
+                return;
             
             dynCollMeshType colType;
             byte[] cookedColl;
@@ -98,7 +97,8 @@ public class GenerateAllGeometryCacheEntries
                 return;
             }
             
-            var ent = GenerateEntity.Generate(Path.Join(relativeMeshDir, $"{filename}.ent"), [cookedColl], colType);
+            // don't generate the mesh component for world builder, it gets attached at runtime
+            var ent = GenerateEntity.Generate(null, [cookedColl], colType);
             var cr2went = new CR2WFile()
             {
                 RootChunk = ent

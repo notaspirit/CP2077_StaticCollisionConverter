@@ -14,7 +14,7 @@ public enum dynCollMeshType
 public class GenerateEntity
 {
     private static Random random = new Random();
-    public static entEntityTemplate Generate(string CMeshPath, List<byte[]> dynCollMeshes, dynCollMeshType meshType)
+    public static entEntityTemplate Generate(string? CMeshPath, List<byte[]> dynCollMeshes, dynCollMeshType meshType)
     {
         var entity = new entEntityTemplate()
         {
@@ -22,13 +22,14 @@ public class GenerateEntity
             Entity = new gameObject()
         };
         
-        entity.Components.Add(
-            new entMeshComponent()
-            {
-                Mesh = new CResourceAsyncReference<CMesh>(CMeshPath),
-                Id = random.NextCRUID(),
-                Name = "Visual Mesh"
-            });
+        if (CMeshPath != null)
+            entity.Components.Add(
+                new entMeshComponent()
+                {
+                    Mesh = new CResourceAsyncReference<CMesh>(CMeshPath),
+                    Id = random.NextCRUID(),
+                    Name = "Visual Mesh"
+                });
 
         foreach (var dynCollMesh in dynCollMeshes)
         {
