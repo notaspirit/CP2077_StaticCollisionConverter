@@ -6,6 +6,7 @@ using StaticCollisionConverter.Services;
 using StaticCollisionConverter.WolvenKitExtensions;
 using WolvenKit.Common.PhysX;
 using WolvenKit.Common.Services;
+using WolvenKit.RED4.Archive.Buffer;
 using WolvenKit.RED4.Archive.CR2W;
 using WolvenKit.RED4.Archive.IO;
 using WolvenKit.RED4.Types;
@@ -243,6 +244,38 @@ namespace StaticCollisionConverter
                         
                         Console.WriteLine($"There are {count} shapes in the GeometryCache!");
                         
+                        break;
+                    case "generate-wb-txt":
+                        if (commandArray.Length != 2)
+                        {
+                            Console.WriteLine("This command requires 1 parameters!");
+                            Console.WriteLine("Usage: generate-wb-txt <outPath>");
+                            return;
+                        }
+
+                        wkit = WolvenKitWrapper.Instance;
+                        wkit.GeometryCacheService.Load();
+
+                        var geofield = typeof(GeometryCacheService)
+                            .GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic);
+
+                        var geofieldValue = geofield.GetValue(wkit.GeometryCacheService);
+                        if (geofieldValue is not Dictionary<ulong, Dictionary<ulong, PhysXMesh>> geoCacheForWB)
+                            throw new Exception(
+                                "WolvenKits GeometryCacheService._entries is not a Dictionary<ulong, Dictionary<ulong, PhysXMesh>>! Aborting...");
+
+                        using (var fs = new FileStream(commandArray[1], FileMode.Create))
+                        using (var swW = new StreamWriter(fs))
+                        {
+                            foreach (var sectorEntry in geoCacheForWB)
+                            {
+                                foreach (var shapeEntry in sectorEntry.Value)
+                                {
+                                    swW.WriteLine($"{sectorEntry.Key} {shapeEntry.Key} {shapeEntry.Value.GetType().Name}");
+                                }
+                                fs.Flush();
+                            }
+                        }
                         break;
                     case "help":
                         Console.WriteLine("Available commands:");
