@@ -116,8 +116,7 @@ public class GenerateAllGeometryCacheEntries
                 return;
             }
             
-            // don't generate the mesh component for world builder, it gets attached at runtime
-            var ent = GenerateEntity.Generate(null, [cookedColl], colType);
+            var ent = GenerateEntity.Generate(meshName, [cookedColl], colType);
 
             using var entStream = new MemoryStream();
             using var entWriter = new CR2WWriter(entStream);

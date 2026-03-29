@@ -29,7 +29,7 @@ public class GenerateEntity
                 {
                     Mesh = new CResourceAsyncReference<CMesh>(CMeshPath),
                     Id = random.NextCRUID(),
-                    Name = "Visual Mesh"
+                    Name = "mesh"
                 });
 
         foreach (var dynCollMesh in dynCollMeshes)
@@ -37,7 +37,7 @@ public class GenerateEntity
             var collComp = new entColliderComponent()
             {
                 Id = random.NextCRUID(),
-                Name = $"Collision Mesh {dynCollMeshes.IndexOf(dynCollMesh)}",
+                Name = $"collision_mesh_{dynCollMeshes.IndexOf(dynCollMesh)}",
                 Colliders = new CArray<CHandle<physicsICollider>>(),
                 FilterData = new physicsFilterData()
                 {
