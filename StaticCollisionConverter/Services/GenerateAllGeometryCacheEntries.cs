@@ -74,7 +74,7 @@ public class GenerateAllGeometryCacheEntries
 
         void ProcessShape(ulong sectorHash, ulong shapeHash, PhysXMesh shape)
         {
-            var filename = $"{sectorHash}_{shapeHash}";
+            var filename = $"{sectorHash}_{shapeHash}_{shape.GetType().Name.ToLower()}";
             var meshName = Path.Join(relativeMeshDir, $"{filename}.mesh");
             var entName = Path.Join(relativeEntDir, $"{filename}.ent");
 
@@ -116,7 +116,8 @@ public class GenerateAllGeometryCacheEntries
                 return;
             }
             
-            var ent = GenerateEntity.Generate(meshName, [cookedColl], colType);
+            // a visual mesh component gets attached at runtime in wb
+            var ent = GenerateEntity.Generate(null, [cookedColl], colType);
 
             using var entStream = new MemoryStream();
             using var entWriter = new CR2WWriter(entStream);
