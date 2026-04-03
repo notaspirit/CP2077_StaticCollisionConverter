@@ -57,6 +57,9 @@ public class GenerateAllGeometryCacheEntries
         
         void ProcessSectorHash(ulong sectorHash, Dictionary<ulong, PhysXMesh> shapeEntries)
         {
+            if (sectorHash == 0)
+                sectorHash = 18372265557566354072; // magic number go brrr, it's what the world sectors reference it has for whatever reason
+            
             foreach (var shapeEntry in shapeEntries)
             {
                 try

@@ -1,11 +1,13 @@
 ﻿using System.CommandLine.Parsing;
 using System.Diagnostics;
 using System.Reflection;
+using DynamicData.Kernel;
 using StaticCollisionConverter.Converters;
 using StaticCollisionConverter.Services;
 using StaticCollisionConverter.WolvenKitExtensions;
 using WolvenKit.Common.PhysX;
 using WolvenKit.Common.Services;
+using WolvenKit.Core.Interfaces;
 using WolvenKit.RED4.Archive.Buffer;
 using WolvenKit.RED4.Archive.CR2W;
 using WolvenKit.RED4.Archive.IO;
@@ -269,9 +271,13 @@ namespace StaticCollisionConverter
                         {
                             foreach (var sectorEntry in geoCacheForWB)
                             {
+                                var sectorHashtxt = sectorEntry.Key;
+                                if (sectorHashtxt == 0)
+                                    sectorHashtxt = 18372265557566354072; // magic number go brrr, it's what the world sectors reference it has for whatever reason
+                                
                                 foreach (var shapeEntry in sectorEntry.Value)
                                 {
-                                    swW.WriteLine($"{sectorEntry.Key} {shapeEntry.Key} {shapeEntry.Value.GetType().Name}");
+                                    swW.WriteLine($"{sectorHashtxt} {shapeEntry.Key} {shapeEntry.Value.GetType().Name}");
                                 }
                                 fs.Flush();
                             }
