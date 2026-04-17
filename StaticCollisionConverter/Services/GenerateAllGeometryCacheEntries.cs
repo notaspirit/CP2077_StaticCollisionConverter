@@ -26,10 +26,7 @@ public class GenerateAllGeometryCacheEntries
         var cmeshGen = new GenerateCMesh();
         cmeshGen.SetDonorMesh(donorMesh);
         
-        var loadedTaskField = typeof(GeometryCacheService)
-            .GetField("_loadedTask", BindingFlags.Instance | BindingFlags.NonPublic);
-        if (loadedTaskField?.GetValue(wkit.GeometryCacheService) is not Task<bool> { IsCompleted: true })
-            wkit.GeometryCacheService.Load();
+        wkit.GeometryCacheService.Load();
         
         var entries = typeof(GeometryCacheService)
             .GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic);
@@ -40,14 +37,14 @@ public class GenerateAllGeometryCacheEntries
         
         Console.WriteLine("Processing Geometry Cache Entries...");
 
-        var processed = 0;
+        var processed = 1;
         foreach (var sectorEntry in geoCache)
         {
             ProcessSectorHash(sectorEntry.Key, sectorEntry.Value);
             Console.WriteLine($"Processed {processed++} / {geoCache.Keys.Count} entries");
         }
         
-        Console.WriteLine("Packing Archive...");
+        Console.WriteLine($"Packing {memFiles.Keys.Count} Files into the Archive...");
         
         Directory.CreateDirectory(Path.GetDirectoryName(outPath)!);
         using var archiveStream = new FileStream(outPath, FileMode.Create, FileAccess.Write);
@@ -57,9 +54,6 @@ public class GenerateAllGeometryCacheEntries
         
         void ProcessSectorHash(ulong sectorHash, Dictionary<ulong, PhysXMesh> shapeEntries)
         {
-            if (sectorHash == 0)
-                sectorHash = 18372265557566354072; // magic number go brrr, it's what the world sectors reference it has for whatever reason
-            
             foreach (var shapeEntry in shapeEntries)
             {
                 try
@@ -68,8 +62,7 @@ public class GenerateAllGeometryCacheEntries
                 }
                 catch (Exception ex)
                 {
-                    Console.WriteLine($"Failed to process shape for {sectorHash}, {shapeEntry.Key} with exception: {ex}, adding to skip list");
-                    File.AppendAllText("E:\\scc_skip_shapes.txt", $"{sectorHash}_{shapeEntry.Key}: {ex}\n");
+                    Console.WriteLine($"Failed to process shape for {sectorHash}, {shapeEntry.Key} with exception: {ex}");
                 }
             }
             
@@ -77,9 +70,12 @@ public class GenerateAllGeometryCacheEntries
 
         void ProcessShape(ulong sectorHash, ulong shapeHash, PhysXMesh shape)
         {
-            var filename = $"{sectorHash}_{shapeHash}_{shape.GetType().Name.ToLower()}";
+            var filename = $"{shapeHash}";
             var meshName = Path.Join(relativeMeshDir, $"{filename}.mesh");
             var entName = Path.Join(relativeEntDir, $"{filename}.ent");
+
+            if (memFiles.ContainsKey(meshName) || memFiles.ContainsKey(entName))
+                return;
 
             // Console.WriteLine($"Processing shape for {sectorHash}, {shapeHash} with type  {shape.GetType()}");
             if (!skipMesh)
@@ -115,7 +111,6 @@ public class GenerateAllGeometryCacheEntries
             if (cookedColl.Length == 0)
             {
                 Console.WriteLine($"Failed to cook shape for {sectorHash}, {shapeHash} for entity");
-                File.AppendAllText("E:\\scc_failed_cook_shapes.txt", $"{sectorHash} {shapeHash}\n");
                 return;
             }
             

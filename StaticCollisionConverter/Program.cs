@@ -191,7 +191,7 @@ namespace StaticCollisionConverter
                         if (commandArray.Length < 5)
                         {
                             Console.WriteLine("This command requires 2 parameters!");
-                            Console.WriteLine("Usage: generate-all-geometry-cache-entries <donormesh> <projectPath> <relativeMeshOut> <relativeEntOut> <skip (optional): CMesh | Ent >");
+                            Console.WriteLine("Usage: generate-all-geometry-cache-entries <donormesh> <projectPath> <relativeMeshOut> <relativeEntOut>");
                             return;
                         }
 
@@ -205,28 +205,10 @@ namespace StaticCollisionConverter
                         var allProjectPath = commandArray[2];
                         var allRelativeMeshDir = commandArray[3];
                         var allRelativeEntDir = commandArray[4];
-                        var allSkipCmesh = false;
-                        var allskipEnt = false;
-                        if (commandArray.Length > 5)
-                        {
-                            switch (commandArray[5].ToLower())
-                            {
-                                case "cmesh":
-                                    allSkipCmesh = true;
-                                    break;
-                                case "ent":
-                                    allskipEnt = true;
-                                    break;
-                                default:
-                                    Console.WriteLine("Invalid argument for skip parameter! Must be 'CMesh' or 'Ent' or not present");
-                                    return;
-                            }
-                        }
-                            
-
+                        
                         var sw = new Stopwatch();
                         sw.Start();
-                        GenerateAllGeometryCacheEntries.Generate(allDonorMesh, allProjectPath, allRelativeMeshDir, allRelativeEntDir, allSkipCmesh, allskipEnt);
+                        GenerateAllGeometryCacheEntries.Generate(allDonorMesh, allProjectPath, allRelativeMeshDir, allRelativeEntDir, false, false);
                         sw.Stop();
                         
                         Console.WriteLine($"Done! Took {FormatElapsedTime(sw.Elapsed)}");
@@ -271,13 +253,9 @@ namespace StaticCollisionConverter
                         {
                             foreach (var sectorEntry in geoCacheForWB)
                             {
-                                var sectorHashtxt = sectorEntry.Key;
-                                if (sectorHashtxt == 0)
-                                    sectorHashtxt = 18372265557566354072; // magic number go brrr, it's what the world sectors reference it has for whatever reason
-                                
                                 foreach (var shapeEntry in sectorEntry.Value)
                                 {
-                                    swW.WriteLine($"{sectorHashtxt} {shapeEntry.Key} {shapeEntry.Value.GetType().Name}");
+                                    swW.WriteLine($"{sectorEntry.Key} {shapeEntry.Key} {shapeEntry.Value.GetType().Name}");
                                 }
                                 fs.Flush();
                             }
